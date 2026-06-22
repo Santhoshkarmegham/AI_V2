@@ -1,24 +1,21 @@
 import os
 from dotenv import load_dotenv
+from google import genai
 
 load_dotenv()
 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-def get_openai_client():
-    from openai import OpenAI
+if not GEMINI_API_KEY:
+    raise Exception("GEMINI_API_KEY is missing")
 
-    api_key = os.getenv("OPENAI_API_KEY")
-
-    if not api_key:
-        raise Exception("OPENAI_API_KEY is missing")
-
-    return OpenAI(api_key=api_key)
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def generate_test_cases(user_story: str):
-    client = get_openai_client()
-
     prompt = f"""
+You are a senior QA tester.
+
 Generate QA test cases for this user story:
 
 {user_story}
@@ -29,38 +26,37 @@ Preconditions:
 Steps:
 Expected Result:
 Priority:
+Test Type:
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a senior QA tester."},
-            {"role": "user", "content": prompt}
-        ]
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
     )
 
-    return response.choices[0].message.content
+    return response.text
 
 
 def generate_automation_script(user_story: str, framework: str):
-    client = get_openai_client()
-
     prompt = f"""
+You are a senior automation engineer.
+
 Generate automation code for this user story:
 
 {user_story}
 
 Framework: {framework}
 
-Return only automation code.
+Rules:
+- Return only automation code.
+- Include required imports.
+- Include assertions.
+- Use clean and reusable code.
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a senior automation engineer."},
-            {"role": "user", "content": prompt}
-        ]
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
     )
 
-    return response.choices[0].message.content
+    return response.text

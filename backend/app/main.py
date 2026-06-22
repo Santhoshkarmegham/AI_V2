@@ -54,11 +54,13 @@ app = FastAPI(title="TestPilot AI")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
+   allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:5175",
         "http://127.0.0.1:5175",
+        "http://localhost:5176",
+        "http://127.0.0.1:5176",
         "https://ai-v2-omega.vercel.app",
     ],
     allow_credentials=True,
