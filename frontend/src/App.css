@@ -1,0 +1,103 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #eaf1ff;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 30px;
+  background: #eaf1ff;
+}
+
+.dashboard-layout {
+  display: flex;
+  min-height: 90vh;
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 260px;
+  background: #0f172a;
+  color: white;
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar h2 {
+  color: white;
+}
+
+.sidebar button {
+  background: #1e293b;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar button:hover {
+  background: #2563eb;
+}
+
+.main-content {
+  flex: 1;
+  background: white;
+  color: #111827;
+  padding: 35px;
+}
+
+.header h1 {
+  color: #111827;
+}
+
+.subtitle {
+  color: #64748b;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+  margin-top: 25px;
+}
+
+.stat-card {
+  background: #f8fafc;
+  color: #111827;
+  border: 1px solid #dbeafe;
+  padding: 25px;
+  border-radius: 16px;
+}
+
+.stat-card h3 {
+  color: #1e3a8a;
+}
+
+button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.logout-btn {
+  background: #dc2626 !important;
+}
+
+.info-panel {
+  margin-top: 30px;
+  background: #f8fafc;
+  color: #111827;
+  padding: 25px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+}
