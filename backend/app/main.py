@@ -3,11 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.execution_service import run_mock_playwright_execution
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from fastapi.responses import StreamingResponse
 from fastapi.responses import FileResponse
 
 import os
-import os
+import logging
 import io
 import csv
 
@@ -19,7 +20,7 @@ from app.models import (
     GeneratedAutomationScript,
     Project,
     ActivityLog,
-    ExecutionLog
+    ExecutionLog,
 )
 
 from app.schemas import (
@@ -29,46 +30,63 @@ from app.schemas import (
     AutomationRequest,
     SaveTestCaseRequest,
     SaveAutomationRequest,
-    ProjectRequest
+    ProjectRequest,
 )
 
 from app.auth import (
     hash_password,
     verify_password,
-    create_access_token
+    create_access_token,
 )
 
 from app.ai_service import (
     generate_test_cases,
-    generate_automation_script
+    generate_automation_script,
 )
 
 from app.jira_service import get_jira_user_stories
 from app.azure_service import get_azure_user_stories
-from fastapi.responses import StreamingResponse
-import io
-import csv
+from app.logging_middleware import RequestLoggingMiddleware
+from app.rate_limiter import RateLimitMiddleware
 
 
 app = FastAPI(title="TestPilot AI")
 
+# attach request logging middleware early so all requests are logged
+app.add_middleware(RequestLoggingMiddleware)
+
+# attach rate limiting middleware for auth endpoints
+app.add_middleware(RateLimitMiddleware)
+
+# Configure allowed CORS origins from environment to avoid localhost entries in production
+allowed = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else []
+# trim whitespace and filter empty
+allowed = [o.strip() for o in allowed if o.strip()]
+if not allowed:
+    # fallback to a production frontend domain if not provided
+    prod_frontend = os.getenv("FRONTEND_URL", "https://ai-v2-omega.vercel.app")
+    allowed = [prod_frontend]
+
 app.add_middleware(
     CORSMiddleware,
-   allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5175",
-        "http://127.0.0.1:5175",
-        "http://localhost:5176",
-        "http://127.0.0.1:5176",
-        "https://ai-v2-omega.vercel.app",
-    ],
+    allow_origins=allowed,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 Base.metadata.create_all(bind=engine)
+
+# basic logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("testpilot")
+
+# Log whether DATABASE_URL is configured (do not log raw URL)
+logger.info(f"DATABASE_URL configured: {'yes' if os.getenv('DATABASE_URL') else 'no'}")
+
+# request logger
+request_logger = logging.getLogger("request")
+request_logger.setLevel(logging.INFO)
 
 
 def get_db():
@@ -92,26 +110,46 @@ def home():
 
 @app.post("/register")
 def register(request: RegisterRequest, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.email == request.email).first()
+    # normalize and validate inputs
+    email = request.email.strip().lower()
+    logger.info("Registration attempt for email: %s", email)
+
+    if len(request.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    existing_user = db.query(User).filter(User.email == email).first()
 
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     new_user = User(
         name=request.name,
-        email=request.email,
+        email=email,
         password=hash_password(request.password)
     )
 
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    try:
+        db.commit()
+        db.refresh(new_user)
+    except IntegrityError:
+        db.rollback()
+        logger.warning("IntegrityError during registration for %s", request.email)
+        raise HTTPException(status_code=400, detail="Email already registered")
+    except Exception as e:
+        db.rollback()
+        logger.exception("Unexpected error during registration for %s: %s", request.email, str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-    add_activity(
-        db,
-        "User Registered",
-        f"Registered user: {new_user.email}"
-    )
+    try:
+        add_activity(
+            db,
+            "User Registered",
+            f"Registered user: {new_user.email}"
+        )
+    except Exception:
+        # don't fail registration if activity logging fails
+        logger.exception("Failed to add activity log for registration: %s", new_user.email)
 
     return {"message": "User registered successfully"}
 

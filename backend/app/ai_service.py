@@ -6,10 +6,10 @@ load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-if not GEMINI_API_KEY:
-    raise Exception("GEMINI_API_KEY is missing")
-
-client = genai.Client(api_key=GEMINI_API_KEY)
+if GEMINI_API_KEY:
+    client = genai.Client(api_key=GEMINI_API_KEY)
+else:
+    client = None
 
 
 def generate_test_cases(user_story: str):
@@ -28,6 +28,9 @@ Expected Result:
 Priority:
 Test Type:
 """
+
+    if not client:
+        raise RuntimeError("AI client not configured")
 
     response = client.models.generate_content(
         model="gemini-2.5-flash",
@@ -53,6 +56,9 @@ Rules:
 - Include assertions.
 - Use clean and reusable code.
 """
+
+    if not client:
+        raise RuntimeError("AI client not configured")
 
     response = client.models.generate_content(
         model="gemini-2.5-flash",
