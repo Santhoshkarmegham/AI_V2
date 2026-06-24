@@ -218,7 +218,7 @@ export default function Dashboard() {
                     <Box
                       sx={{
                         display: "flex",
-                        justifyContent: "center",
+                        justifyContent: "flex-start",
                         mb: 2,
                       }}
                     >
@@ -227,26 +227,18 @@ export default function Dashboard() {
                           width: 60,
                           height: 60,
                           backgroundColor: feature.color,
+                          mr: 2,
                         }}
                       >
                         <Icon sx={{ fontSize: "2rem" }} />
                       </Avatar>
                     </Box>
 
-                    <Typography
-                      variant="h6"
-                      align="center"
-                      fontWeight={600}
-                      sx={{ mb: 1 }}
-                    >
+                    <Typography variant="h6" fontWeight={600} sx={{ mb: 1, textAlign: 'left' }}>
                       {feature.title}
                     </Typography>
 
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      align="center"
-                    >
+                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'left' }}>
                       {feature.description}
                     </Typography>
                   </CardContent>
