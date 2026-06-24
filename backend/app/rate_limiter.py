@@ -15,20 +15,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, paths=None):
         super().__init__(app)
         self.paths = set(paths or ["/register", "/login"])
-        # read env at init so tests can override env before creating app
-        self.max_requests = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", str(DEFAULT_MAX)))
-        self.window = int(os.getenv("RATE_LIMIT_WINDOW", str(DEFAULT_WINDOW)))
+        # keep defaults; read env dynamically in dispatch to respect test-time env changes
+        self.max_requests = DEFAULT_MAX
+        self.window = DEFAULT_WINDOW
         self.redis = None
         self.lock = asyncio.Lock()
 
-        redis_url = os.getenv("REDIS_URL") or os.getenv("REDIS_URI")
-        if redis_url:
-            try:
-                import redis.asyncio as aioredis
-
-                self.redis = aioredis.from_url(redis_url)
-            except Exception:
-                self.redis = None
+        # do not initialize redis here; initialize lazily in dispatch
 
         # fallback in-memory store for single-instance/testing
         self.counters: Dict[str, Tuple[int, float]] = {}
@@ -47,6 +40,27 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         try:
+            # honor env changes at request time
+            try:
+                self.max_requests = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", str(DEFAULT_MAX)))
+            except Exception:
+                self.max_requests = DEFAULT_MAX
+            try:
+                self.window = int(os.getenv("RATE_LIMIT_WINDOW", str(DEFAULT_WINDOW)))
+            except Exception:
+                self.window = DEFAULT_WINDOW
+
+            # lazily initialize redis if a REDIS_URL is configured
+            if self.redis is None:
+                redis_url = os.getenv("REDIS_URL") or os.getenv("REDIS_URI")
+                if redis_url:
+                    try:
+                        import redis.asyncio as aioredis
+
+                        self.redis = aioredis.from_url(redis_url)
+                    except Exception:
+                        self.redis = None
+
             if request.method.upper() == "POST" and request.url.path in self.paths:
                 client = request.client.host if request.client else "anonymous"
                 key = f"rl:{request.url.path}:{client}"

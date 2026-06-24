@@ -5,6 +5,7 @@ from google import genai
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+USE_FAKE_AI = os.getenv("USE_FAKE_AI", "false").lower() in ("1", "true", "yes")
 
 if GEMINI_API_KEY:
     client = genai.Client(api_key=GEMINI_API_KEY)
@@ -28,6 +29,10 @@ Expected Result:
 Priority:
 Test Type:
 """
+
+    if USE_FAKE_AI:
+        # simple deterministic fake output for local/free usage
+        return f"Test Case Title: Basic test for story\nPreconditions: None\nSteps: 1) {user_story}\nExpected Result: Works\nPriority: Medium\nTest Type: Functional"
 
     if not client:
         raise RuntimeError("AI client not configured")
@@ -56,6 +61,10 @@ Rules:
 - Include assertions.
 - Use clean and reusable code.
 """
+
+    if USE_FAKE_AI:
+        # simple fake automation script
+        return f"// Fake automation script for {framework}\n// User story: {user_story}\nconsole.log('fake test');"
 
     if not client:
         raise RuntimeError("AI client not configured")
